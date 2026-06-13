@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>爱在西元前 — 交互式歌曲拆解教材</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   基础
+   ═══════════════════════════════════════════════════════ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0d0d1a;
+  color: #ddd;
+  font-family: 'Microsoft YaHei','PingFang SC',sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   顶部
+   ═══════════════════════════════════════════════════════ */
+.header {
+  background: linear-gradient(135deg,#141428,#1a1a35);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #222;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.header h1 {
+  font-size: 17px;
+  font-weight: 700;
+  background: linear-gradient(90deg,#e94560,#f5a623);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.header .sub {
+  font-size: 11px;
+  color: #666;
+}
+
+/* 控制栏 */
+.controls {
+  background: #141428;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #222;
+  flex-wrap: wrap;
+}
+.controls button {
+  background: #e94560;
+  color: #fff;
+  border: none;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-size: 15px;
+  cursor: pointer;
+  transition: .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.controls button:hover { background: #ff6b81; transform:scale(1.05); }
+.controls .time { font-size:12px; color:#888; min-width:90px; font-family:Consolas; }
+.controls .seek {
+  flex:1; min-width:80px; height:5px;
+  -webkit-appearance:none; appearance:none;
+  background:#222; border-radius:3px; outline:none;
+}
+.controls .seek::-webkit-slider-thumb {
+  -webkit-appearance:none; width:13px; height:13px;
+  border-radius:50%; background:#e94560; cursor:pointer;
+}
+.controls .seek::-moz-range-thumb {
+  width:13px; height:13px; border-radius:50%; background:#e94560; cursor:pointer; border:none;
+}
+.controls .section-tag {
+  font-size:11px; color:#f5a623;
+  background:rgba(245,166,35,.12); padding:3px 10px; border-radius:4px;
+}
+
+/* ── 模式切换按钮组 ── */
+.mode-group {
+  display: flex;
+  gap: 4px;
+}
+.mode-btn {
+  background: transparent;
+  border: 1px solid #333;
+  color: #666;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: .2s;
+  font-family: inherit;
+}
+.mode-btn:hover { border-color:#555; color:#aaa; }
+.mode-btn.active {
+  background: rgba(233,69,96,.15);
+  border-color: #e94560;
+  color: #e94560;
+}
+.mode-btn.level-btn.active {
+  background: rgba(79,195,247,.12);
+  border-color: #4fc3f7;
+  color: #4fc3f7;
+}
+
+/* ── 速度控制 ── */
+.speed-control {
+  display: flex; align-items: center; gap: 4px;
+}
+.speed-control label { font-size:11px; color:#666; }
+.speed-control select {
+  background:#1a1a2e; color:#ddd; border:1px solid #333;
+  border-radius:3px; padding:2px 6px; font-size:11px; font-family:inherit;
+}
+
+/* ═══════════════════════════════════════════════════════
+   主区域
+   ═══════════════════════════════════════════════════════ */
+.main { display:flex; flex:1; overflow:hidden; }
+
+/* ── 歌词面板 ── */
+.lyrics-panel {
+  flex:1;
+  padding: 16px 20px;
+  overflow-y: auto;
+  background: #0d0d1a;
+}
+.lyrics-panel::-webkit-scrollbar { width:5px; }
+.lyrics-panel::-webkit-scrollbar-track { background:transparent; }
+.lyrics-panel::-webkit-scrollbar-thumb { background:#222; border-radius:3px; }
+
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #f5a623;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 20px 0 6px 0;
+  padding: 3px 10px;
+  background: rgba(245,166,35,.08);
+  border-left: 3px solid #f5a623;
+  border-radius: 0 3px 3px 0;
+  cursor: pointer;
+  transition: .2s;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label:hover { background: rgba(245,166,35,.15); }
+.section-label:first-of-type { margin-top: 0; }
+.section-label .badge {
+  font-size: 9px; color: #888; font-weight: 400; letter-spacing: 0;
+}
+
+/* 歌词行 */
+.lyric-line {
+  padding: 5px 10px;
+  margin: 1px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.lyric-line:hover { background: rgba(255,255,255,.03); }
+.lyric-line.active {
+  background: rgba(233,69,96,.12);
+  border-left: 3px solid #e94560;
+  margin-left: -3px;
+}
+.lyric-line .ts { font-size:10px; color:#444; min-width:44px; font-family:Consolas; padding-top:3px; }
+
+/* 和弦行（L2/L3 显示） */
+.lyric-line .chord-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  margin-bottom: 1px;
+  min-height: 18px;
+}
+.lyric-line .chord-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: Consolas, monospace;
+  padding: 1px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: .15s;
+  background: rgba(255,255,255,.04);
+}
+.lyric-line .chord-tag:hover {
+  transform: scale(1.08);
+  filter: brightness(1.3);
+}
+.lyric-line .chord-tag .roman {
+  font-size: 9px;
+  font-weight: 400;
+  opacity: .6;
+  margin-left: 4px;
+}
+
+/* 歌词文本 */
+.lyric-line .text { font-size: 15px; line-height: 1.7; }
+.lyric-line.active .text { color: #fff; }
+
+/* 乐器/技巧标签（L1 显示） */
+.lyric-line .tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.lyric-line .tag {
+  font-size: 9px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.05);
+  color: #888;
+}
+.lyric-line .tag.instrument { color: #e94560; background: rgba(233,69,96,.08); }
+.lyric-line .tag.technique { color: #ab47bc; background: rgba(171,71,188,.08); }
+.lyric-line .tag.why { color: #f5a623; background: rgba(245,166,35,.08); }
+
+/* 知识难度切换：隐藏控制 */
+body.level-1 .l2-only,
+body.level-1 .l3-only,
+body.level-2 .l3-only { display: none !important; }
+
+/* 学习模式：隐藏控制 */
+body.focus-lyrics .chord-row,
+body.focus-lyrics .tag-row,
+body.focus-lyrics .section-label .badge { opacity: .25; }
+body.focus-instruments .chord-row,
+body.focus-instruments .text { opacity: .2; }
+body.focus-chords .tag-row,
+body.focus-chords .text { opacity: .2; }
+body.focus-techniques .chord-row,
+body.focus-techniques .text { opacity: .2; }
+
+/* ═══════════════════════════════════════════════════════
+   知识面板（右）
+   ═══════════════════════════════════════════════════════ */
+.knowledge-panel {
+  width: 350px;
+  min-width: 350px;
+  padding: 16px;
+  overflow-y: auto;
+  background: #141428;
+  border-left: 1px solid #222;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.knowledge-panel::-webkit-scrollbar { width:5px; }
+.knowledge-panel::-webkit-scrollbar-track { background:transparent; }
+.knowledge-panel::-webkit-scrollbar-thumb { background:#222; border-radius:3px; }
+
+.knowledge-panel .kp-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f5a623;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #222;
+  display: flex; align-items: center; gap: 6px;
+}
+.knowledge-panel .kp-title .mode-indicator {
+  font-size: 10px;
+  font-weight: 400;
+  color: #888;
+  background: rgba(255,255,255,.05);
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
+/* ── 知识卡片 ── */
+.k-card {
+  display: none;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  border-left: 3px solid #555;
+  background: rgba(255,255,255,.02);
+}
+.k-card.show { display: block; }
+.k-card .kc-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  opacity: .7;
+}
+.k-card .kc-body { font-size: 13px; line-height: 1.7; color: #ccc; }
+
+/* 和弦详情卡 */
+.k-card.chord-card { border-left-color: #4fc3f7; }
+.k-card.chord-card .kc-label { color: #4fc3f7; }
+
+/* 乐器卡 */
+.k-card.instr-card { border-left-color: #e94560; }
+.k-card.instr-card .kc-label { color: #e94560; }
+
+/* 编曲技巧卡 */
+.k-card.tech-card { border-left-color: #ab47bc; }
+.k-card.tech-card .kc-label { color: #ab47bc; }
+
+/* 为什么好听卡 */
+.k-card.why-card { border-left-color: #f5a623; background: rgba(245,166,35,.06); }
+.k-card.why-card .kc-label { color: #f5a623; }
+.k-card.why-card .kc-body { color: #e0d5c0; }
+
+/* 调性卡 */
+.k-card.harmony-card { border-left-color: #26c6da; }
+.k-card.harmony-card .kc-label { color: #26c6da; }
+
+/* 吉他指板图 */
+.fret-diagram {
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #aaa;
+  background: rgba(0,0,0,.3);
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+  white-space: pre;
+}
+
+/* ── Solo 听音区 ── */
+.solo-panel {
+  border-top: 1px solid #222;
+  padding: 12px 16px;
+  background: #0f0f20;
+}
+.solo-panel .sp-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.solo-panel .sp-title .uvr-link {
+  font-size: 10px;
+  color: #4fc3f7;
+  cursor: pointer;
+  font-weight: 400;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+.solo-panel .stem-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.solo-panel .stem-btn {
+  padding: 4px 14px;
+  border-radius: 15px;
+  border: 1px solid #333;
+  background: transparent;
+  color: #666;
+  font-size: 11px;
+  cursor: pointer;
+  transition: .2s;
+  font-family: inherit;
+}
+.solo-panel .stem-btn:hover { border-color:#555; color:#aaa; }
+.solo-panel .stem-btn.active { border-color: #e94560; color: #e94560; background: rgba(233,69,96,.1); }
+.solo-panel .stem-btn.solo-all { border-color: #4fc3f7; color: #4fc3f7; }
+.solo-panel .stem-btn.solo-all.active { background: rgba(79,195,247,.1); }
+.solo-panel .stem-note {
+  font-size: 10px;
+  color: #555;
+  margin-top: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   响应式
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 820px) {
+  .main { flex-direction: column; }
+  .knowledge-panel {
+    width: 100%; min-width: unset;
+    border-left: none; border-top: 1px solid #222;
+    max-height: 300px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   频谱视觉
+   ═══════════════════════════════════════════════════════ */
+.spec-viz {
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(0,0,0,.3);
+  border-radius: 4px;
+}
+.spec-viz .spec-bar-wrap { display: flex; align-items: flex-end; gap: 2px; height: 40px; margin: 4px 0; }
+.spec-viz .spec-bar {
+  flex: 1;
+  background: #e94560;
+  border-radius: 2px 2px 0 0;
+  min-height: 4px;
+  opacity: .6;
+  transition: height .15s;
+}
+.spec-viz .spec-labels {
+  display: flex; justify-content: space-between; font-size: 8px; color: #555;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     顶栏
+     ═══════════════════════════════════════════════════════ -->
+<div class="header">
+  <div>
+    <h1>🎵 爱在西元前 — 交互式歌曲拆解教材</h1>
+    <div class="sub">周杰伦 · 词:方文山 · 编曲:林迈可 · B大调 · BPM~64</div>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <button class="mode-btn" onclick="showHelp()" style="border-color:transparent;color:#888;">❓</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     控制栏
+     ═══════════════════════════════════════════════════════ -->
+<div class="controls">
+  <button id="playBtn" onclick="togglePlay()">▶</button>
+  <span class="time" id="timeDisplay">0:00 / 3:54</span>
+  <input type="range" class="seek" id="seekBar" value="0" oninput="seekTo(this.value)">
+  <span class="section-tag" id="sectionTag">前奏</span>
+
+  <div class="speed-control">
+    <label>速度</label>
+    <select id="speedSelect" onchange="setSpeed(this.value)">
+      <option value="0.5">0.5x</option>
+      <option value="0.75">0.75x</option>
+      <option value="1" selected>1x</option>
+      <option value="1.25">1.25x</option>
+      <option value="1.5">1.5x</option>
+    </select>
+  </div>
+</div>
+
+<!-- 第二行控制：知识难度 + 学习模式 -->
+<div class="controls" style="padding-top:4px;padding-bottom:4px;border-bottom:1px solid #1a1a2e;">
+  <span style="font-size:10px;color:#555;min-width:52px;">知识难度</span>
+  <div class="mode-group">
+    <button class="mode-btn level-btn active" data-level="1" onclick="setLevel(1)">L1 入门</button>
+    <button class="mode-btn level-btn" data-level="2" onclick="setLevel(2)">L2 进阶</button>
+    <button class="mode-btn level-btn" data-level="3" onclick="setLevel(3)">L3 高级</button>
+  </div>
+  <span style="font-size:10px;color:#555;margin-left:12px;">学习模式</span>
+  <div class="mode-group">
+    <button class="mode-btn focus-btn active" data-focus="all" onclick="setFocus('all')">全部</button>
+    <button class="mode-btn focus-btn" data-focus="lyrics" onclick="setFocus('lyrics')">歌词</button>
+    <button class="mode-btn focus-btn" data-focus="instruments" onclick="setFocus('instruments')">乐器</button>
+    <button class="mode-btn focus-btn" data-focus="chords" onclick="setFocus('chords')">和弦</button>
+    <button class="mode-btn focus-btn" data-focus="techniques" onclick="setFocus('techniques')">技巧</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     主区域
+     ═══════════════════════════════════════════════════════ -->
+<div class="main">
+  <!-- 歌词面板 -->
+  <div class="lyrics-panel" id="lyricsPanel"></div>
+
+  <!-- 知识面板 -->
+  <div class="knowledge-panel" id="knowledgePanel">
+    <div class="kp-title">
+      📖 当前知识
+      <span class="mode-indicator" id="modeIndicator">L1 · 全部</span>
+    </div>
+    <div id="knowledgeContent">
+      <p style="font-size:12px;color:#555;">点击任意歌词行或和弦开始学习</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     Solo 听音区
+     ═══════════════════════════════════════════════════════ -->
+<div class="solo-panel">
+  <div class="sp-title">
+    🎧 单独听 <span style="font-weight:400;color:#555;">（Solo Listening）</span>
+    <span class="uvr-link" onclick="showUVRGuide()">需要提取分轨？→ UVR5 教程</span>
+  </div>
+  <div class="stem-buttons">
+    <button class="stem-btn solo-all active" data-stem="all" onclick="setSolo('all')">🎵 全部</button>
+    <button class="stem-btn" data-stem="vocals" onclick="setSolo('vocals')">🎤 人声</button>
+    <button class="stem-btn" data-stem="guitar" onclick="setSolo('guitar')">🎸 吉他</button>
+    <button class="stem-btn" data-stem="drums" onclick="setSolo('drums')">🥁 鼓</button>
+    <button class="stem-btn" data-stem="bass" onclick="setSolo('bass')">🎸 贝斯</button>
+    <button class="stem-btn" data-stem="strings" onclick="setSolo('strings')">🎻 弦乐</button>
+    <button class="stem-btn" data-stem="keys" onclick="setSolo('keys')">🎹 键盘</button>
+  </div>
+  <div class="stem-note" id="soloNote">💡 用 UVR5 提取分轨文件后放入 stems/ 文件夹即可启用单独听音</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     帮助弹窗
+     ═══════════════════════════════════════════════════════ -->
+<div id="helpModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)hideHelp()">
+  <div class="modal-box">
+    <h2 style="color:#f5a623;margin-bottom:12px;">🎯 使用指南</h2>
+    <div style="font-size:13px;line-height:2;">
+      <div><b style="color:#4fc3f7;">L1 入门</b> — 只看乐器 + 基础和弦名，适合零基础</div>
+      <div><b style="color:#4fc3f7;">L2 进阶</b> — 和弦级数 + 乐器角色 + 简单编曲分析</div>
+      <div><b style="color:#4fc3f7;">L3 高级</b> — 完整和弦延伸 + 和声调性 + 制作技术</div>
+      <hr style="border-color:#222;margin:8px 0;">
+      <div><b style="color:#e94560;">歌词模式</b> — 只看歌词，专注听</div>
+      <div><b style="color:#e94560;">乐器模式</b> — 专注听乐器配置</div>
+      <div><b style="color:#e94560;">和弦模式</b> — 专注看和弦变化</div>
+      <div><b style="color:#e94560;">编曲技巧</b> — 专注编曲手法</div>
+      <hr style="border-color:#222;margin:8px 0;">
+      <div><span style="color:#4fc3f7;">蓝色</span> = 大和弦 &nbsp; <span style="color:#66bb6a;">绿色</span> = 小和弦</div>
+      <div><span style="color:#ab47bc;">紫色</span> = maj7 &nbsp; <span style="color:#ffa726;">橙色</span> = 属7</div>
+      <hr style="border-color:#222;margin:8px 0;">
+      <div style="color:#888;">🎸 点击和弦 → 看吉他按法 + 构成音</div>
+      <div style="color:#888;">⏎ 空格播放 · ←→ 快进 · ↑↓ 音量</div>
+      <div style="color:#888;">🎧 Solo听音需要先用 UVR5 提取分轨</div>
+    </div>
+    <button onclick="hideHelp()" style="margin-top:16px;background:#e94560;color:#fff;border:none;padding:8px 24px;border-radius:4px;cursor:pointer;font-family:inherit;">知道了</button>
+  </div>
+</div>
+
+<!-- UVR5 教程弹窗 -->
+<div id="uvrModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)hideUVR()">
+  <div class="modal-box" style="max-width:520px;">
+    <h2 style="color:#4fc3f7;margin-bottom:12px;">🎧 用 UVR5 提取分轨</h2>
+    <div style="font-size:12px;line-height:1.8;">
+      <p style="margin-bottom:8px;">下载 <b>Ultimate Vocal Remover 5</b>（免费开源）：</p>
+      <div style="background:#0d0d1a;padding:8px 12px;border-radius:4px;font-family:Consolas;font-size:11px;color:#aaa;">
+        GitHub: github.com/Anjok07/ultimatevocalremovergui
+      </div>
+      <p style="margin:12px 0 8px;"><b>提取步骤：</b></p>
+      <ol style="padding-left:20px;color:#aaa;">
+        <li>打开 UVR5 → 选择 MP3 文件</li>
+        <li>Model 选 <b>MDX-Net → Kim Vocal 2</b>（最佳平衡）</li>
+        <li>Output 选 <b>Vocals + Instrumental</b></li>
+        <li>提取一次得到人声和伴奏</li>
+        <li>伴奏再跑一次：选 <b>MDX-Net → UVR-MDX-Net Main</b></li>
+        <li>得到：鼓/贝斯/其他</li>
+      </ol>
+      <p style="margin-top:12px;color:#888;">提取后把文件放入 HTML 同目录的 <b>stems/</b> 文件夹：</p>
+      <div style="background:#0d0d1a;padding:6px 12px;border-radius:4px;font-family:Consolas;font-size:10px;color:#888;">
+        stems/vocals.wav<br>
+        stems/guitar.wav<br>
+        stems/drums.wav<br>
+        stems/bass.wav<br>
+        stems/strings.wav<br>
+        stems/keys.wav
+      </div>
+    </div>
+    <button onclick="hideUVR()" style="margin-top:16px;background:#333;color:#fff;border:none;padding:8px 24px;border-radius:4px;cursor:pointer;font-family:inherit;">关闭</button>
+  </div>
+</div>
+
+<style>
+.modal-overlay {
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,.7); z-index:1000;
+  display:flex; align-items:center; justify-content:center;
+}
+.modal-box {
+  background:#1a1a2e; padding:24px; border-radius:12px;
+  max-width:480px; border:1px solid #333; margin:20px;
+}
+</style>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  和弦知识库
+// ═══════════════════════════════════════════════════════════
+const CHORD_DB = {
+  "B": {
+    type: "major", color: "#4fc3f7",
+    notes: "B-D#-F#", roman: "I",
+    guitar: `e|---2---
+B|---4---
+G|---4---
+D|---4---
+A|---2---
+E|-------`,
+    desc: "B大调的主和弦（I级）。听感：明亮、稳定、\"回家的感觉\"。",
+    simple: "B大和弦 = 快乐、明亮的颜色。这首歌的\"家\"。"
+  },
+  "Bmaj7": {
+    type: "maj7", color: "#ab47bc",
+    notes: "B-D#-F#-A#", roman: "Imaj7",
+    guitar: `e|---2---
+B|---4---
+G|---4---
+D|---3---
+A|---2---
+E|-------`,
+    desc: "在大三和弦上加了一个大七度（A#）。听感：梦幻、带一点爵士味。",
+    simple: "B和弦加了一个音符，听起来更\"梦幻\"一些。"
+  },
+  "#Gm7": {
+    type: "minor7", color: "#66bb6a",
+    notes: "G#-B-D#-F#", roman: "VIm7",
+    guitar: `e|---4---
+B|---4---
+G|---4---
+D|---6---
+A|---4---
+E|-------`,
+    desc: "G#小七和弦（VI级）。小和弦自带忧伤色彩，七度增加流动性。",
+    simple: "G#m = 小和弦，听起来有点忧伤、温柔。"
+  },
+  "Gm7": {
+    type: "minor7", color: "#66bb6a",
+    notes: "G-Bb-D-F", roman: "VIm7 (转调)",
+    guitar: `e|---3---
+B|---3---
+G|---3---
+D|---5---
+A|---3---
+E|-------`,
+    desc: "G小七和弦（转调后B♭大调的VI级）。",
+    simple: "转调后的小和弦，色彩更暗一些。"
+  },
+  "E": {
+    type: "major", color: "#4fc3f7",
+    notes: "E-G#-B", roman: "IV",
+    guitar: `e|---0---
+B|---0---
+G|---1---
+D|---2---
+A|---2---
+E|---0---`,
+    desc: "E大和弦（IV级）。在B大调中，E和弦像一个\"深呼吸\"，让音乐稍微离开家的感觉。",
+    simple: "E大和弦 = 明亮的和弦，歌里用来\"换口气\"。"
+  },
+  "E♭": {
+    type: "major", color: "#4fc3f7",
+    notes: "Eb-G-Bb", roman: "IV (转调)",
+    guitar: `e|---6---
+B|---4---
+G|---5---
+D|---6---
+A|---6---
+E|---4---`,
+    desc: "降E大和弦（转调B♭大调的IV级）。",
+    simple: "Eb大和弦，转调后的新颜色。"
+  },
+  "#Dm7": {
+    type: "minor7", color: "#66bb6a",
+    notes: "D#-F#-A#-C#", roman: "IIIm7",
+    guitar: `e|---4---
+B|---4---
+G|---4---
+D|---6---
+A|---6---
+E|---4---`,
+    desc: "D#小七和弦（III级）。小和弦的温柔感，在B大调中是比较暗的色彩。",
+    simple: "D#m7 = 小和弦，配合歌词\"静静欣赏\"的温柔感。"
+  },
+  "Dm7": {
+    type: "minor7", color: "#66bb6a",
+    notes: "D-F-A-C", roman: "IIIm7 (转调)",
+    guitar: `e|---1---
+B|---1---
+G|---2---
+D|---0---
+A|-------|
+E|-------|`,
+    desc: "D小七和弦（转调后B♭大调的III级）。",
+    simple: "Dm7 = 小和弦，转调后的温柔颜色。"
+  },
+  "B/#F": {
+    type: "major", color: "#4fc3f7",
+    notes: "B-D#-F#（低音F#）", roman: "I (转位)",
+    guitar: `低音弹F#（4弦4品），按B和弦`,
+    desc: "B和弦的转位——低音是F#而非B。低音线条更流畅，和声色彩更轻。",
+    simple: "同样是B和弦，但最低的音是F#，听起来更\"飘\"一些。"
+  },
+  "#F": {
+    type: "major", color: "#4fc3f7",
+    notes: "F#-A#-C#", roman: "V",
+    guitar: `e|---2---
+B|---2---
+G|---3---
+D|---4---
+A|---4---
+E|---2---`,
+    desc: "F#大和弦（V级/属和弦）。制造紧张感、推动往B和弦走。",
+    simple: "F#大和弦 = 属和弦，制造\"想回家\"的紧张感。"
+  },
+  "F": {
+    type: "major", color: "#4fc3f7",
+    notes: "F-A-C", roman: "IV (桥段C大调)",
+    guitar: `e|---1---
+B|---1---
+G|---2---
+D|---3---
+A|---3---
+E|---1---`,
+    desc: "F大和弦（桥段转入C大调后的IV级和弦）。",
+    simple: "F大和弦，桥段里听起来\"新\"的和弦。"
+  },
+  "C": {
+    type: "major", color: "#4fc3f7",
+    notes: "C-E-G", roman: "I (桥段C大调)",
+    guitar: `e|---0---
+B|---1---
+G|---0---
+D|---2---
+A|---3---
+E|-------`,
+    desc: "C大和弦。桥段中转入C大调的主和弦（I级）。",
+    simple: "C大和弦，桥段里像\"新的家\"。"
+  },
+  "G": {
+    type: "major", color: "#4fc3f7",
+    notes: "G-B-D", roman: "V (桥段C大调)",
+    guitar: `e|---3---
+B|---0---
+G|---0---
+D|---0---
+A|---2---
+E|---3---`,
+    desc: "G大和弦。桥段C大调的属和弦（V级）。",
+    simple: "G大和弦，制造紧张推动回到C。"
+  },
+  "Am": {
+    type: "minor", color: "#66bb6a",
+    notes: "A-C-E", roman: "VIm (桥段C大调)",
+    guitar: `e|---0---
+B|---1---
+G|---2---
+D|---2---
+A|---0---
+E|-------`,
+    desc: "A小和弦（桥段C大调的VI级）。小和弦的忧郁感。",
+    simple: "Am = 小和弦，桥段结尾的忧郁感。"
+  },
+  "Emaj7": {
+    type: "maj7", color: "#ab47bc",
+    notes: "E-G#-B-D#", roman: "IVmaj7",
+    guitar: `e|---0---
+B|---0---
+G|---1---
+D|---1---
+A|---2---
+E|---0---`,
+    desc: "E大七和弦。大七度音让E和弦变得更梦幻、更开阔。",
+    simple: "E和弦加了大七度，听起来更\"宽广\"。"
+  },
+  "E/#F": {
+    type: "major", color: "#4fc3f7",
+    notes: "E-G#-B（低音F#）", roman: "IV (转位)",
+    guitar: `低音弹F#，按E和弦`,
+    desc: "E和弦的低音转位，低音行走到F#上，为进入F#和弦做准备。",
+    simple: "E和弦但低音是F#，过渡和弦。"
+  },
+  "B♭": {
+    type: "major", color: "#4fc3f7",
+    notes: "Bb-D-F", roman: "I (转调B♭大调)",
+    guitar: `e|---6---
+B|---6---
+G|---7---
+D|---8---
+A|---8---
+E|---6---`,
+    desc: "降B大和弦。副歌后降半调的主和弦。",
+    simple: "降B大和弦，比B低了半音。"
+  },
+  "E♭7/G": {
+    type: "dom7", color: "#ffa726",
+    notes: "Eb-G-Bb-Db（低音G）", roman: "bVII7",
+    guitar: `低音弹G的降E7和弦`,
+    desc: "属七和弦+bIII级低音。半音趋近的关键和弦，制造紧张感。",
+    simple: "属七和弦，有种\"不稳定的紧张感\"。"
+  },
+  "E♭maj7": {
+    type: "maj7", color: "#ab47bc",
+    notes: "Eb-G-Bb-D", roman: "IVmaj7",
+    desc: "降E大七和弦。",
+    simple: "降E大七和弦，梦幻感。"
+  },
+  "F/G": {
+    type: "major", color: "#4fc3f7",
+    notes: "F-A-C（低音G）", roman: "IV (转位)",
+    desc: "F和弦但低音是G。过渡和弦。",
+    simple: "过渡和弦。"
+  },
+  "F/D": {
+    type: "major", color: "#4fc3f7",
+    notes: "F-A-C（低音D）", roman: "IV (转位)",
+    desc: "F和弦但低音是D。低音下行线条。",
+    simple: "F和弦但低音是D。"
+  },
+  "#F/#D": {
+    type: "major", color: "#4fc3f7",
+    notes: "F#-A#-C#（低音D#）", roman: "V (转位)",
+    desc: "F#和弦的转位，低音是D#。",
+    simple: "转位和弦。"
+  },
+  "B/B♭": {
+    type: "major", color: "#4fc3f7",
+    notes: "B-D#-F#（低音Bb）", roman: "I (半音低音)",
+    desc: "B和弦但低音是Bb（不是B）。这个半音下行低音（B→Bb）是林迈可的标志性手法。",
+    simple: "B和弦但最低音降了半音，听起来\"滑了一下\"。"
+  },
+  "F#/#D": {
+    type: "major", color: "#4fc3f7",
+    notes: "F#-A#-C#（低音D#）", roman: "",
+    desc: "F#和弦转位。",
+    simple: "转位和弦。"
+  },
+  "B♭maj7": {
+    type: "maj7", color: "#ab47bc",
+    notes: "Bb-D-F-A", roman: "Imaj7 (转调)",
+    desc: "降B大七和弦。",
+    simple: "降B大七和弦。"
+  },
+  "E♭/F": {
+    type: "major", color: "#4fc3f7",
+    notes: "Eb-G-Bb（低音F）", roman: "",
+    desc: "降E和弦的低音转位。",
+    simple: "过渡和弦。"
+  },
+  "Gm": {
+    type: "minor", color: "#66bb6a",
+    notes: "G-Bb-D", roman: "IIIm (转调)",
+    desc: "G小和弦。",
+    simple: "Gm小和弦。"
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+//  歌词数据（完整版）
+// ═══════════════════════════════════════════════════════════
+const LYRIC_DATA = [
+  // ── 前奏 ──
+  { section: "前奏", time: 0, chords: [], text: "",
+    tags: ["🎸 吉他Riff • Lo-Fi"],
+    l1: { instr: "🎸 吉他（Lo-Fi处理）", why: "用Lo-Fi音质模拟\"古老石碑\"的感觉" },
+    l2: { instr: "🎸 Clean Guitar + Lo-Fi Filter", tech: "低通滤波 + 磁带饱和" },
+    l3: { instr: "🎸 吉他Riff（压缩+短混响）", tech: "Filter Sweep: 2kHz cutoff → 全频" },
+    why: [
+      "🎯 为什么前奏这么抓人？",
+      "① Lo-Fi音质制造神秘感 → 你\"听不清\"所以更想听",
+      "② 吉他Riff简单重复 → 大脑会自动跟着哼",
+      "③ 鼓组第5小节才进 → 给耳朵时间去适应",
+    ]
+  },
+  { section: "前奏", time: 7, chords: [], text: "♪ 第5小节鼓组进入 → 第7小节吉他变清晰",
+    tags: ["🥁 鼓组进入"],
+    l1: { instr: "🥁 鼓组（Kick+Snare+Hi-Hat）" },
+    l2: { instr: "🥁 R&B风格鼓组，轻快的Swing节奏" },
+    l3: { instr: "🥁 Kick 16分音符装饰 + Snare 2/4拍重音", tech: "分层进入：鼓先→吉他后，不是同时打开" },
+    why: [
+      "🎯 为什么鼓要晚进来？",
+      "① 先让观众记住吉他Riff → 再给节奏",
+      "② 如果所有乐器同时出现 → 信息量太大",
+      "③ 分层进入 = 编曲的\"呼吸感\"",
+    ]
+  },
+
+  // ── 主歌A ──
+  { section: "主歌A", time: 15,
+    chords: [{name:"B",roman:"I"},{name:"Bmaj7",roman:"Imaj7"},{name:"#Gm7",roman:"VIm7"}],
+    text: "古巴比伦王颁布了 汉摩拉比法典",
+    tags: ["🎤 单音吟唱"],
+    l1: { instr: "🎤 人声 · 🎸 吉他 · 🥁 鼓", why: "人声几乎在同一个音上说话式唱歌" },
+    l2: { instr: "🎤 人声 + 🎸 吉他Riff + 🥁 鼓组", tech: "人声旋律几乎全在B音上（小二度移动）" },
+    l3: { instr: "🎤 Lead Vocal（压缩比~3:1）", tech: "rap-like单音吟唱，11字几乎全在同一音" },
+    why: [
+      "🎯 为什么主歌像在\"念\"而不是\"唱\"？",
+      "① 密集歌词（11个字）→ 用念的方式信息更清晰",
+      "② 单音重复让你专注在歌词内容上",
+      "③ 到副歌才放开旋律 → 形成\"窄→宽\"的对比",
+    ]
+  },
+  { section: "主歌A", time: 23,
+    chords: [{name:"#Gm7",roman:"VIm7"},{name:"E",roman:"IV"},{name:"#Dm7",roman:"IIIm7"}],
+    text: "刻在黑色的玄武岩 距今已经三千七百多年",
+    tags: [],
+    l1: { instr: "", why: "和弦在走：G#m → E → D#m" },
+    l2: { tech: "I → VI → IV → V 循环（经典R&B走向）" },
+    l3: { tech: "1645进行：B → G#m → E → F#，每个和弦2-4小节" },
+    why: [
+      "🎯 为什么这句听起来很\"稳\"？",
+      "① 和弦走得慢 → 像在\"铺开画卷讲故事\"",
+      "② 低音线条稳定 → 没有突然的跳跃吓到耳朵",
+      "③ 人声继续单音 → 保持叙述感",
+    ]
+  },
+  { section: "主歌A", time: 31,
+    chords: [{name:"E",roman:"IV"}],
+    text: "你在橱窗前 凝视碑文的字眼",
+    tags: ["🎹 击弦古钢琴"],
+    l1: { instr: "🎹 古钢琴点缀句尾" },
+    l2: { instr: "🎹 Harpsichord（巴洛克音色→古老感）" },
+    l3: { instr: "🎹 Harpsichord + 短混响", tech: "古钢琴音色绑定\"古老\"意象" },
+    why: [
+      "🎯 为什么会用古钢琴？",
+      "① 不是真的钢琴 → 是Harpsichord（大键琴）",
+      "② 巴洛克时期乐器 → 潜意识里=古老",
+      "③ 只在句尾闪一下 → 不会喧宾夺主",
+      "④ 换钢琴 → 会太现代，失去神秘感",
+    ]
+  },
+  { section: "主歌A", time: 38,
+    chords: [{name:"#Dm7",roman:"IIIm7"},{name:"B/#F",roman:"I转位"}],
+    text: "我却在旁静静欣赏 你那张我深爱的脸",
+    tags: [],
+    l1: { instr: "" },
+    l2: { tech: "吉他Riff持续贯穿，建立辨识度" },
+    l3: { tech: "B/#F低音转位：低音从D#→F#，线条流畅" },
+    why: [
+      "🎯 副歌前最后一句在干嘛？",
+      "① 吉他Riff还在继续 → 保持连贯",
+      "② B/#F低音悄悄变化 → 不让你察觉地准备进副歌",
+      "③ 能量在\"蓄力\" → 副歌才释放",
+    ]
+  },
+
+  // ── 主歌A后半 ──
+  { section: "主歌A", time: 48,
+    chords: [{name:"B",roman:"I"},{name:"B/B♭",roman:"I(半音)"},{name:"#Gm7",roman:"VIm7"}],
+    text: "祭司 神殿 征战 弓箭 是谁的从前",
+    tags: ["✂️ 断句节奏"],
+    l1: { instr: "", why: "\"祭司·神殿·征战·弓箭\"——每个词一个重音" },
+    l2: { tech: "16分音符断句，每个词一个重音，模仿\"刻写\"感" },
+    l3: { tech: "B/B♭半音下行低音——林迈可标志手法" },
+    why: [
+      "🎯 为什么要断着唱？",
+      "① 四个词四个重音 → 像在石碑上\"刻字\"",
+      "② 节奏感强 → 防止听众走神",
+      "③ B/B♭的降半音低音 → 像是\"脚滑了一下\"的微妙感",
+    ]
+  },
+  { section: "主歌A", time: 55,
+    chords: [{name:"#Gm7",roman:"VIm7"},{name:"E",roman:"IV"},{name:"#Dm7",roman:"IIIm7"}],
+    text: "喜欢在人潮中 你只属于我的那画面",
+    tags: [],
+    l1: { instr: "", why: "" },
+    l2: { tech: "" },
+    l3: { tech: "" },
+    why: []
+  },
+  { section: "主歌A", time: 62,
+    chords: [{name:"E",roman:"IV"},{name:"#Dm7",roman:"IIIm7"}],
+    text: "经过苏美女神身边 我以女神之名许愿",
+    tags: ["🎵 竖琴"],
+    l1: { instr: "🎵 竖琴背景琶音" },
+    l2: { instr: "🎵 Harp 点缀（最古老乐器→古文明意象）" },
+    l3: { instr: "🎵 Harp 琶音上行/下行", tech: "混音压到背景，心理暗示而非显性" },
+    why: [
+      "🎯 为什么用竖琴而不是吉他？",
+      "① 竖琴是人类最古老的乐器之一",
+      "② 和\"苏美女神\"\"许愿\"形成画面绑定",
+      "③ 放在背景 ≈ 你\"感觉到\"但没\"注意到\"",
+      "④ 如果换成吉他Solo → 变成流行歌，失去神秘感",
+    ]
+  },
+  { section: "主歌A", time: 69,
+    chords: [{name:"#Dm7",roman:"IIIm7"},{name:"B/#F",roman:"I转位"}],
+    text: "思念像底格里斯河般的 漫延",
+    tags: [],
+    l1: { instr: "" },
+    l2: { tech: "" },
+    l3: { tech: "" },
+    why: []
+  },
+
+  // ── 预副歌 ──
+  { section: "预副歌", time: 76,
+    chords: [{name:"#Dm7",roman:"IIIm7"},{name:"E♭7/G",roman:"bVII7"},{name:"#Gm",roman:"VIm"}],
+    text: "当古文明只剩下难解的语言",
+    tags: ["⬆️ 半音趋近"],
+    l1: { instr: "", why: "两个和弦的低音越来越紧 → 紧张感" },
+    l2: { tech: "#Dm7 → E♭7/G 低音半音下行（#D→E♭）制造紧张" },
+    l3: { tech: "半音趋近（Chromatic Approach）+ E♭7属七和弦张力" },
+    why: [
+      "🎯 为什么这里突然变紧张？",
+      "① 低音#D→E♭降了半音 → 像\"踩到边缘\"",
+      "② 属七和弦（E♭7）自带\"不稳定\"属性",
+      "③ 紧张感在逼你问\"然后呢？\" → 迫你听下去",
+    ]
+  },
+  { section: "预副歌", time: 83,
+    chords: [{name:"Emaj7",roman:"IVmaj7"},{name:"E/#F",roman:"IV转位"},{name:"#F",roman:"V"}],
+    text: "传说就成了 永垂不朽的诗篇",
+    tags: ["🎤 三叠和声"],
+    l1: { instr: "🎤 和声（主音+三度+五度）" },
+    l2: { instr: "🎤 三叠人声，声场从单声道变立体声" },
+    l3: { instr: "🎤 多轨和声LCR排列", tech: "属和弦#F蓄力 → 副歌爆发" },
+    why: [
+      "🎯 为什么\"诗篇\"两个字特别有力量？",
+      "① 三叠和声叠上去 → 声音突然变厚",
+      "② 声场从\"脑子里\"变成\"整个房间\"",
+      "③ #F属和弦蓄满能量 → 推向副歌",
+      "④ 这首歌就是要你在这里\"起鸡皮疙瘩\"",
+    ]
+  },
+
+  // ── 副歌 ──
+  { section: "副歌", time: 89,
+    chords: [{name:"B",roman:"I"},{name:"Bmaj7",roman:"Imaj7"},{name:"#Gm7",roman:"VIm7"}],
+    text: "我给你的爱写在西元前 深埋在美索不达米亚平原",
+    tags: ["🎻 弦乐进入", "🎹 合成器铺底"],
+    l1: { instr: "🎻 弦乐组 + 🎹 合成器 · 声音变宽" },
+    l2: { instr: "🎻 Violin Ensemble（长音铺底） + 🎹 Synth Strings", tech: "III→VI→II→V离调进行" },
+    l3: { instr: "🎻 弦乐大混响 · 🎹 合成弦乐叠加", tech: "#D→#Gm→#C→#F，B/#F持续低音" },
+    why: [
+      "🎯 为什么副歌比主歌有力量？",
+      "① 弦乐加入了 → 声音厚度翻倍",
+      "② 和声（三叠人声）加入了 → 宽度变宽",
+      "③ 旋律跨度从\"同一个音\"变成\"跳五度\" → 释放感",
+      "④ 鼓组更密了 → 能量感增加",
+      "⑤ 混响变大了 → 像从\"小房间\"到\"大厅\"",
+    ]
+  },
+  { section: "副歌", time: 101,
+    chords: [{name:"#F/#D",roman:"V转位"},{name:"#Dm7",roman:"IIIm7"},{name:"#F",roman:"V"},{name:"B",roman:"I"}],
+    text: "几十个世纪后出土发现 泥板上的字迹依然清晰可见",
+    tags: [],
+    l1: { instr: "" },
+    l2: { tech: "B/#F持续低音 → 低音稳住，上方和弦在变化" },
+    l3: { tech: "Pedal Tone技巧：低音F#保持4小节，和弦在变但低音不动" },
+    why: [
+      "🎯 为什么低音一直停在F#？",
+      "① 低音不动 → 给听众\"踩在大地上\"的稳定感",
+      "② 上方和弦在变 → 细节丰富但不混乱",
+      "③ 这叫Pedal Tone（持续音） → 古典音乐里也很常用",
+    ]
+  },
+  { section: "副歌", time: 125,
+    chords: [{name:"E",roman:"IV"},{name:"Bmaj7",roman:"Imaj7"},{name:"#Dm7",roman:"IIIm7"},{name:"#F",roman:"V"},{name:"B",roman:"I"}],
+    text: "用楔形文字刻下了永远 那已风化千年的誓言 一切又重演",
+    tags: [],
+    l1: { instr: "", why: "\"爱\"字旋律突然拉长——情感完全释放" },
+    l2: { tech: "旋律跨度从主歌小二度 → 副歌五度跳跃" },
+    l3: { tech: "五度跳进+全乐队齐奏 = 高潮释放" },
+    why: [
+      "🎯 为什么这句最好听？",
+      "① \"爱\"字拉长 → 前面憋了整段主歌终于释放",
+      "② 全乐队一起走 → 所有能量在这里爆发",
+      "③ \"一切又重演\"收回来 → 回到准备下一轮",
+    ]
+  },
+
+  // ── 间奏 ──
+  { section: "间奏", time: 141,
+    chords: [{name:"B",roman:"I"},{name:"#F",roman:"V"},{name:"#Gm",roman:"VIm"},{name:"E",roman:"IV"}],
+    text: "♪ 间奏",
+    tags: ["🎵 竖琴Solo", "🎵 锡塔尔"],
+    l1: { instr: "🎵 竖琴Solo + 🎵 锡塔尔（印度风）" },
+    l2: { instr: "🎵 Harp + 🎵 Sitar（印度-波斯色彩）" },
+    l3: { instr: "🎵 Harp琶音 + Sitar音阶（压到-15dB背景）", tech: "异域音色=两河文明氛围" },
+    why: [
+      "🎯 间奏为什么有印度味？",
+      "① 锡塔尔（Sitar）是印度乐器 → 营造\"东方异域\"感",
+      "② 两河流域（古巴比伦）在中东 → \"异域\"感是合理的",
+      "③ 压到几乎听不见 → 你\"感觉到\"但说不清",
+    ]
+  },
+
+  // ── 主歌A' 转调 ──
+  { section: "★ 转调主歌", time: 152,
+    chords: [{name:"B♭",roman:"I(新调)"},{name:"B♭maj7",roman:"Imaj7"},{name:"Gm7",roman:"VIm7"}],
+    text: "古巴比伦王颁布了 汉摩拉比法典",
+    tags: ["⬇️ 降半调"],
+    l1: { instr: "", why: "整段降了半音！B→B♭，像\"陷入更深的回忆\"" },
+    l2: { tech: "硬切转调：副歌最后一拍直接落到B♭大调" },
+    l3: { tech: "Direct Modulation：无过渡和弦，直接从B→B♭" },
+    why: [
+      "🎯 为什么要降调而不是升调？",
+      "① 99%的流行歌升key → 为了\"更激动\"",
+      "② 这里降调 → 为了\"更深沉\"",
+      "③ 配合歌词：\"疲倦\"\"离家很远\" → 降调=坠落感",
+      "④ 林迈可这个处理非常大胆",
+    ]
+  },
+
+  // ── 桥段（核心） ──
+  { section: "★ 桥段", time: 187,
+    chords: [{name:"F",roman:"IV"},{name:"C",roman:"I"}],
+    text: "我感到很疲倦 离家乡还是很远",
+    tags: ["🎹 钢琴+人声", "⬇️ 再降调"],
+    l1: { instr: "🎹 钢琴分解和弦 · 🎤 人声", why: "所有乐器都停了！只剩钢琴+人声" },
+    l2: { tech: "减法编曲：吉他Riff暂停、鼓组变稀疏、只剩钢琴" },
+    l3: { tech: "B♭大调→C大调，降了大二度。C大调IV→I进行" },
+    why: [
+      "🎯 为什么这里最催泪？",
+      "① 所有乐器突然抽走 → 像\"全世界安静了\"",
+      "② 华语歌99%升key → 这里降调 → 意外感",
+      "③ \"疲倦\"歌词 + 降调 + 只剩钢琴 = 三重情绪打击",
+      "④ 这段是录音室临时加的！原Demo没有！",
+    ]
+  },
+  { section: "★ 桥段", time: 197,
+    chords: [{name:"F",roman:"IV"},{name:"G",roman:"V"},{name:"Am",roman:"VIm"}],
+    text: "害怕再也不能回到你身边",
+    tags: [],
+    l1: { instr: "", why: "" },
+    l2: { tech: "F→G→Am，像一首全新的歌突然插入" },
+    l3: { tech: "C大调 IV→V→VI，全曲三个调性之一" },
+    why: [
+      "🎯 为什么像\"另一首歌\"插了进来？",
+      "① 和弦进行完全不同（F→C→F→G→Am）",
+      "② 和前面B大调的听感完全不同",
+      "③ 创造\"时空撕裂\"感——像回到另一个时空",
+      "④ 然后再升回去 → 这是全曲最精妙的设计",
+    ]
+  },
+
+  // ── 副歌（回升） ──
+  { section: "副歌·回升", time: 207,
+    chords: [{name:"B",roman:"I(回到原调)"},{name:"Bmaj7",roman:"Imaj7"},{name:"#Gm7",roman:"VIm7"}],
+    text: "我给你的爱写在西元前 深埋在美索不达米亚平原",
+    tags: ["⬆️ 升回原调", "🎻 全编制"],
+    l1: { instr: "🎻 全乐器回归", why: "用G7过渡和弦平滑拉回B大调" },
+    l2: { tech: "G7过渡和弦（C大调V级→B大调bVI）" },
+    l3: { tech: "G7 = C大调属和弦 = B大调bVI，一拍过渡" },
+    why: [
+      "🎯 怎么\"不知不觉\"升回来的？",
+      "① 用了一个过渡和弦G7，只出现了一拍",
+      "② G7既是C大调的\"尾巴\"，又是B大调的\"桥\"",
+      "③ 你完全察觉不到，但情绪\"回到了家\"",
+      "④ 这叫\"共同和弦转调\"——古典音乐的技法",
+    ]
+  },
+  { section: "副歌·尾声", time: 243,
+    chords: [{name:"#Dm7",roman:"IIIm7"},{name:"#F",roman:"V"},{name:"B",roman:"I"}],
+    text: "用楔形文字刻下了永远 那已风化千年的誓言 一切又重演",
+    tags: ["🌅 淡出结束"],
+    l1: { instr: "", why: "没有告别，直接淡出——呼应\"一切又重演\"" },
+    l2: { tech: "没有Outro Solo，吉他Riff持续到最后，直接淡出" },
+    l3: { tech: "Fade Out结束，无尾奏——开放式结尾" },
+    why: [
+      "🎯 为什么不做一个漂亮的结尾？",
+      "① 歌词说\"一切又重演\" → 所以不结束 = 循环",
+      "② 没有Solo结束 → 因为没有\"告别\"",
+      "③ 淡出 → 像故事还在继续，只是你听不见了",
+      "④ 形式=内容 —— 最好的编曲是\"为歌词服务\"",
+    ]
+  },
+];
+
+// ═══════════════════════════════════════════════════════════
+//  状态
+// ═══════════════════════════════════════════════════════════
+let currentLevel = 1;
+let currentFocus = "all";
+let activeIdx = -1;
+let isPlaying = false;
+let currentSection = "";
+
+const audio = new Audio();
+audio.src = "爱在西元前-周杰伦.mp3";
+audio.volume = 0.8;
+
+// ═══════════════════════════════════════════════════════════
+//  渲染
+// ═══════════════════════════════════════════════════════════
+
+function getChord(name) {
+  return CHORD_DB[name] || { type:"major", color:"#4fc3f7", notes:"", roman:"", guitar:"", desc:"", simple:"" };
+}
+
+function getChordColor(name) {
+  const c = getChord(name);
+  return c.color || "#4fc3f7";
+}
+
+function renderLyrics() {
+  let html = "";
+  let lastSection = "";
+  LYRIC_DATA.forEach((line, idx) => {
+    if (line.section !== lastSection) {
+      lastSection = line.section;
+      html += `<div class="section-label">
+        ${line.section}
+        <span class="badge">${formatTime(line.time)}</span>
+      </div>`;
+    }
+
+    // 和弦行（L2/L3 显示，L1简单版）
+    let chordRow = "";
+    if (line.chords.length > 0) {
+      chordRow = `<div class="chord-row">`;
+      line.chords.forEach(c => {
+        const cc = getChordColor(c.name);
+        let romanDisplay = "";
+        if (currentLevel >= 2) romanDisplay = `<span class="roman">${c.roman}</span>`;
+        chordRow += `<span class="chord-tag" style="color:${cc};border:1px solid ${cc}33;" onclick="showChordDetail('${c.name}',event)">${c.name}${romanDisplay}</span>`;
+      });
+      chordRow += `</div>`;
+    }
+
+    // 标签行（L1 显示）
+    let tagRow = "";
+    if (line.tags.length > 0 && currentLevel <= 2) {
+      tagRow = `<div class="tag-row">`;
+      line.tags.forEach(t => {
+        const cls = t.includes("🎸")||t.includes("🎻")||t.includes("🎹")||t.includes("🎤")||t.includes("🎵")||t.includes("🥁") ? "instrument" : t.includes("⬆️")||t.includes("⬇️")||t.includes("✂️") ? "technique" : "why";
+        tagRow += `<span class="tag ${cls}">${t}</span>`;
+      });
+      tagRow += `</div>`;
+    }
+
+    // 文本
+    let textDisplay = line.text;
+
+    html += `<div class="lyric-line" data-idx="${idx}" onclick="clickLine(${idx})">
+      <span class="ts">${formatTime(line.time)}</span>
+      <div style="flex:1;">
+        ${chordRow}
+        <div class="text">${textDisplay}</div>
+        ${tagRow}
+      </div>
+    </div>`;
+  });
+  document.getElementById('lyricsPanel').innerHTML = html;
+}
+
+function formatTime(s) {
+  if (isNaN(s)) return "0:00";
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  知识面板
+// ═══════════════════════════════════════════════════════════
+
+function updateKnowledge(idx) {
+  const line = LYRIC_DATA[idx];
+  if (!line) return;
+  const panel = document.getElementById('knowledgeContent');
+  let html = "";
+
+  // Level 1: 乐器+简单原因
+  if (currentLevel === 1) {
+    if (line.l1.instr) {
+      html += `<div class="k-card show instr-card">
+        <div class="kc-label">🎸 当前乐器</div>
+        <div class="kc-body">${line.l1.instr}</div>
+      </div>`;
+    }
+    if (line.l1.why) {
+      html += `<div class="k-card show why-card">
+        <div class="kc-label">💡 注意听</div>
+        <div class="kc-body">${line.l1.why}</div>
+      </div>`;
+    }
+  }
+
+  // Level 2: 乐器+编曲技巧+和弦级数
+  if (currentLevel === 2) {
+    if (line.l2.instr) {
+      html += `<div class="k-card show instr-card">
+        <div class="kc-label">🎸 乐器</div>
+        <div class="kc-body">${line.l2.instr}</div>
+      </div>`;
+    }
+    if (line.l2.tech) {
+      html += `<div class="k-card show tech-card">
+        <div class="kc-label">💡 编曲手法</div>
+        <div class="kc-body">${line.l2.tech}</div>
+      </div>`;
+    }
+    if (line.chords.length > 0) {
+      const chordsList = line.chords.map(c => `<span style="color:${getChordColor(c.name)};font-weight:700;font-family:Consolas;">${c.name}</span> (<span style="color:#888;">${c.roman}</span>)`).join(' → ');
+      html += `<div class="k-card show harmony-card">
+        <div class="kc-label">🎹 和弦进行</div>
+        <div class="kc-body">${chordsList}</div>
+      </div>`;
+    }
+  }
+
+  // Level 3: 全部
+  if (currentLevel === 3) {
+    if (line.l3.instr) {
+      html += `<div class="k-card show instr-card">
+        <div class="kc-label">🎸 乐器细节</div>
+        <div class="kc-body">${line.l3.instr}</div>
+      </div>`;
+    }
+    if (line.l3.tech) {
+      html += `<div class="k-card show tech-card">
+        <div class="kc-label">💡 高级编曲技术</div>
+        <div class="kc-body">${line.l3.tech}</div>
+      </div>`;
+    }
+    if (line.chords.length > 0) {
+      const chordsList = line.chords.map(c => `<span style="color:${getChordColor(c.name)};font-weight:700;font-family:Consolas;">${c.name}</span>`).join(' → ');
+      html += `<div class="k-card show harmony-card">
+        <div class="kc-label">🎹 和弦进行</div>
+        <div class="kc-body">${chordsList}</div>
+      </div>`;
+
+      // 显示详细和弦构成
+      html += `<div class="k-card show chord-card">
+        <div class="kc-label">🎼 和弦构成</div>
+        <div class="kc-body">`;
+      line.chords.forEach(c => {
+        const info = getChord(c.name);
+        html += `<div style="margin:2px 0;">
+          <span style="color:${info.color};font-weight:700;font-family:Consolas;">${c.name}</span>
+          <span style="color:#888;">  = ${info.notes}  [${info.desc}]</span>
+        </div>`;
+      });
+      html += `</div></div>`;
+    }
+  }
+
+  // 为什么好听（所有Level都有，内容一样）
+  if (line.why && line.why.length > 0) {
+    html += `<div class="k-card show why-card">
+      <div class="kc-label">🎯 为什么这里好听？</div>
+      <div class="kc-body" style="font-size:13px;">`;
+    line.why.forEach(w => {
+      const isHeader = w.startsWith("🎯");
+      html += `<div style="margin:2px 0;${isHeader?'font-weight:700;color:#e0d5c0;margin-bottom:4px;':''}">${w}</div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  if (!html) html = '<p style="font-size:12px;color:#555;">暂无注释 · 切换知识难度了解更多</p>';
+  panel.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  和弦详情弹窗
+// ═══════════════════════════════════════════════════════════
+function showChordDetail(name, evt) {
+  const info = getChord(name);
+  if (!info) return;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.onclick = function(e) { if(e.target===this) document.body.removeChild(this); };
+
+  const typeLabels = {
+    major: "大三和弦（明亮）",
+    minor: "小三和弦（忧伤）",
+    minor7: "小七和弦（温柔忧伤）",
+    maj7: "大七和弦（梦幻）",
+    dom7: "属七和弦（紧张）"
+  };
+
+  modal.innerHTML = `<div class="modal-box" style="max-width:500px;">
+    <h2 style="color:${info.color};font-family:Consolas;margin-bottom:8px;">${name}
+      <span style="font-size:14px;color:#888;font-family:'Microsoft YaHei';"> — ${typeLabels[info.type]||info.type}</span>
+    </h2>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:120px;">
+        <div style="font-size:12px;color:#888;margin-bottom:4px;">🎼 构成音</div>
+        <div style="font-size:16px;color:${info.color};font-weight:700;font-family:Consolas;">${info.notes}</div>
+        <div style="font-size:12px;color:#888;margin:8px 0 4px;">🎸 级数</div>
+        <div style="font-size:14px;color:#aaa;font-family:Consolas;">${info.roman}</div>
+      </div>
+      <div style="flex:1;min-width:120px;">
+        <div style="font-size:12px;color:#888;margin-bottom:4px;">🎸 吉他指板</div>
+        <pre style="font-family:Consolas;font-size:10px;color:#aaa;background:rgba(0,0,0,.3);padding:6px;border-radius:4px;line-height:1.2;">${info.guitar || '(移调/转位和弦)'}</pre>
+      </div>
+    </div>
+    <div style="margin-top:8px;font-size:13px;color:#bbb;line-height:1.6;">${currentLevel >= 2 ? info.desc : info.simple}</div>
+    <button onclick="this.closest('.modal-overlay').remove()" style="margin-top:12px;background:#333;color:#fff;border:none;padding:6px 20px;border-radius:4px;cursor:pointer;font-family:inherit;">关闭</button>
+  </div>`;
+
+  document.body.appendChild(modal);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  音频控制
+// ═══════════════════════════════════════════════════════════
+function togglePlay() {
+  if (isPlaying) {
+    audio.pause();
+  } else {
+    audio.play().catch(e => {
+      if (e.name === 'NotAllowedError') {
+        alert('请先在页面上点击一下激活音频，再按播放。');
+      } else {
+        const msg = e.name === 'NotSupportedError' || audio.networkState === audio.NETWORK_NO_SOURCE
+          ? '找不到音频文件。\n请把 MP3 文件和 HTML 放在同一个文件夹。'
+          : `播放失败: ${e.message}`;
+        alert('⚠️ ' + msg + '\n\n或用 Edge 浏览器打开尝试。');
+      }
+    });
+  }
+}
+
+function seekTo(val) { audio.currentTime = parseFloat(val); }
+function setSpeed(val) { audio.playbackRate = parseFloat(val); }
+
+function clickLine(idx) {
+  const item = LYRIC_DATA[idx];
+  audio.currentTime = item.time;
+  if (!isPlaying) audio.play().catch(()=>{});
+  updateActiveLine(idx);
+  updateKnowledge(idx);
+
+  // 更新段落tag
+  document.getElementById('sectionTag').textContent = item.section.replace(/[0-9:★]/g,'').trim();
+}
+
+function updateActiveLine(idx) {
+  document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
+  const el = document.querySelector(`.lyric-line[data-idx="${idx}"]`);
+  if (el) {
+    el.classList.add('active');
+    el.scrollIntoView({block:'center',behavior:'smooth'});
+  }
+  activeIdx = idx;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  知识难度切换
+// ═══════════════════════════════════════════════════════════
+function setLevel(lv) {
+  currentLevel = lv;
+  document.body.className = document.body.className.replace(/level-\d/g,'') + ` level-${lv}`;
+  document.querySelectorAll('.level-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.level) === lv);
+  });
+  document.getElementById('modeIndicator').textContent = `L${lv} · ${getFocusLabel()}`;
+  // 重新渲染歌词和知识面板
+  renderLyrics();
+  if (activeIdx >= 0) {
+    updateKnowledge(activeIdx);
+    updateActiveLine(activeIdx);
+  }
+  highlightActiveLine();
+}
+
+function getFocusLabel() {
+  const labels = {all:'全部', lyrics:'歌词', instruments:'乐器', chords:'和弦', techniques:'技巧'};
+  return labels[currentFocus] || '全部';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  学习模式切换
+// ═══════════════════════════════════════════════════════════
+function setFocus(mode) {
+  currentFocus = mode;
+  document.body.className = document.body.className.replace(/focus-\w+/g,'') + ` level-${currentLevel} focus-${mode}`;
+  document.querySelectorAll('.focus-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.focus === mode);
+  });
+  document.getElementById('modeIndicator').textContent = `L${currentLevel} · ${getFocusLabel()}`;
+  highlightActiveLine();
+}
+
+function highlightActiveLine() {
+  if (activeIdx >= 0) updateActiveLine(activeIdx);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Solo 听音
+// ═══════════════════════════════════════════════════════════
+function setSolo(stem) {
+  document.querySelectorAll('.stem-btn').forEach(b => b.classList.toggle('active', b.dataset.stem === stem));
+  const note = document.getElementById('soloNote');
+  if (stem === 'all') {
+    audio.src = "爱在西元前-周杰伦.mp3";
+    note.textContent = "💡 用 UVR5 提取分轨文件后放入 stems/ 文件夹即可启用单独听音";
+  } else {
+    audio.src = `stems/${stem}.wav`;
+    note.textContent = `🔊 正在播放: ${stem}.wav（需要先提取分轨）`;
+  }
+  if (isPlaying) audio.play().catch(()=>{});
+}
+
+// ═══════════════════════════════════════════════════════════
+//  弹窗
+// ═══════════════════════════════════════════════════════════
+function showHelp() {
+  document.getElementById('helpModal').style.display = 'flex';
+}
+function hideHelp() {
+  document.getElementById('helpModal').style.display = 'none';
+}
+function showUVRGuide() {
+  document.getElementById('uvrModal').style.display = 'flex';
+}
+function hideUVR() {
+  document.getElementById('uvrModal').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  音频事件
+// ═══════════════════════════════════════════════════════════
+audio.addEventListener('play', () => {
+  isPlaying = true;
+  document.getElementById('playBtn').textContent = '⏸';
+});
+audio.addEventListener('pause', () => {
+  isPlaying = false;
+  document.getElementById('playBtn').textContent = '▶';
+});
+audio.addEventListener('ended', () => {
+  isPlaying = false;
+  document.getElementById('playBtn').textContent = '▶';
+});
+audio.addEventListener('timeupdate', () => {
+  const t = audio.currentTime;
+  const dur = audio.duration || 234;
+  document.getElementById('seekBar').max = dur;
+  document.getElementById('seekBar').value = t;
+  document.getElementById('timeDisplay').textContent = `${formatTime(t)} / ${formatTime(dur)}`;
+
+  // 找到最匹配的歌词行
+  let best = -1;
+  for (let i = LYRIC_DATA.length - 1; i >= 0; i--) {
+    if (t >= LYRIC_DATA[i].time - 0.3) { best = i; break; }
+  }
+  if (best >= 0 && best !== activeIdx) {
+    updateActiveLine(best);
+    updateKnowledge(best);
+    const sec = LYRIC_DATA[best].section;
+    document.getElementById('sectionTag').textContent = sec.replace(/[0-9:★]/g,'').trim();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  键盘快捷键
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  if (e.code === 'ArrowLeft') { audio.currentTime = Math.max(0, audio.currentTime - 5); }
+  if (e.code === 'ArrowRight') { audio.currentTime = Math.min(audio.duration||234, audio.currentTime + 5); }
+  if (e.code === 'ArrowUp') { audio.volume = Math.min(1, audio.volume + 0.1); }
+  if (e.code === 'ArrowDown') { audio.volume = Math.max(0, audio.volume - 0.1); }
+  if (e.code === 'Escape') { hideHelp(); hideUVR(); }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  初始化
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  renderLyrics();
+  setLevel(1);
+  setFocus('all');
+  if (LYRIC_DATA.length > 0) {
+    updateKnowledge(0);
+  }
+});
+</script>
+</body>
+</html>
