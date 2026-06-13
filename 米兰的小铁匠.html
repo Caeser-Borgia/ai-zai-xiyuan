@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>米兰的小铁匠 — 交互式歌曲拆解教材</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1512;
+  color: #ddd;
+  font-family: 'Microsoft YaHei','PingFang SC',sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+.header {
+  background: linear-gradient(135deg,#3d2b1f,#5a3d2b);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #4a3525;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.header h1 {
+  font-size: 17px; font-weight: 700;
+  background: linear-gradient(90deg,#d4a574,#c0392b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.header .sub { font-size: 11px; color: rgba(255,255,255,.4); }
+.controls {
+  background: #221a15;
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #3a2a1e;
+  flex-wrap: wrap;
+}
+.controls button {
+  background: #c0392b;
+  color: #fff;
+  border: none;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-size: 15px;
+  cursor: pointer;
+  transition: .15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.controls button:hover { background: #e74c3c; transform:scale(1.05); }
+.controls .time { font-size:12px; color:#666; min-width:90px; font-family:Consolas; }
+.controls .seek {
+  flex:1; min-width:80px; height:5px;
+  -webkit-appearance:none; appearance:none;
+  background:#3a2a1e; border-radius:3px; outline:none;
+}
+.controls .seek::-webkit-slider-thumb {
+  -webkit-appearance:none; width:13px; height:13px;
+  border-radius:50%; background:#c0392b; cursor:pointer;
+}
+.controls .section-tag {
+  font-size:11px; color:#d4a574;
+  background:rgba(212,165,116,.12); padding:3px 10px; border-radius:4px;
+}
+.mode-group { display: flex; gap: 4px; }
+.mode-btn {
+  background: transparent; border: 1px solid #3a2a1e;
+  color: #666; padding: 4px 10px; border-radius: 4px;
+  font-size: 11px; cursor: pointer; transition: .2s; font-family: inherit;
+}
+.mode-btn:hover { border-color:#d4a574; color:#d4a574; }
+.mode-btn.active { background: rgba(212,165,116,.1); border-color: #d4a574; color: #d4a574; }
+.mode-btn.level-btn.active { background: rgba(79,195,247,.1); border-color: #4fc3f7; color: #4fc3f7; }
+.speed-control { display: flex; align-items: center; gap: 4px; }
+.speed-control label { font-size:11px; color:#666; }
+.speed-control select { background:#221a15; color:#ddd; border:1px solid #3a2a1e; border-radius:3px; padding:2px 6px; font-size:11px; font-family:inherit; }
+.main { display:flex; flex:1; overflow:hidden; }
+.lyrics-panel { flex:1; padding: 16px 20px; overflow-y: auto; background: #1a1512; }
+.lyrics-panel::-webkit-scrollbar { width:5px; }
+.lyrics-panel::-webkit-scrollbar-thumb { background:#3a2a1e; border-radius:3px; }
+.section-label {
+  font-size: 10px; font-weight: 700; color: #d4a574;
+  text-transform: uppercase; letter-spacing: 2px;
+  margin: 20px 0 6px 0; padding: 3px 10px;
+  background: rgba(212,165,116,.06);
+  border-left: 3px solid #d4a574;
+  border-radius: 0 3px 3px 0; cursor: pointer; transition: .2s;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label:first-of-type { margin-top: 0; }
+.section-label .badge { font-size: 9px; color: #555; font-weight: 400; }
+.lyric-line { padding: 5px 10px; margin: 1px 0; border-radius: 6px; cursor: pointer; transition: all .2s; display: flex; align-items: flex-start; gap: 8px; }
+.lyric-line:hover { background: rgba(255,255,255,.02); }
+.lyric-line.active { background: rgba(192,57,43,.1); border-left: 3px solid #c0392b; margin-left: -3px; }
+.lyric-line .ts { font-size:10px; color:#444; min-width:44px; font-family:Consolas; padding-top:3px; }
+.lyric-line .chord-row { display: flex; flex-wrap: wrap; gap: 3px 12px; margin-bottom: 1px; min-height: 18px; }
+.lyric-line .chord-tag { display: inline-block; font-size: 12px; font-weight: 700; font-family: Consolas, monospace; padding: 1px 6px; border-radius: 3px; cursor: pointer; transition: .15s; background: rgba(255,255,255,.04); }
+.lyric-line .chord-tag .roman { font-size: 9px; font-weight: 400; opacity: .6; margin-left: 4px; }
+.lyric-line .text { font-size: 15px; line-height: 1.7; }
+.lyric-line.active .text { color: #fff; }
+.lyric-line .tag-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.lyric-line .tag { font-size: 9px; padding: 1px 8px; border-radius: 10px; background: rgba(255,255,255,.04); color: #666; }
+.lyric-line .tag.instrument { color: #d4a574; background: rgba(212,165,116,.08); }
+.lyric-line .tag.technique { color: #ab47bc; background: rgba(171,71,188,.08); }
+.lyric-line .tag.why { color: #f5a623; background: rgba(245,166,35,.08); }
+body.level-1 .l2-only, body.level-1 .l3-only, body.level-2 .l3-only { display: none !important; }
+body.focus-lyrics .chord-row, body.focus-lyrics .tag-row, body.focus-lyrics .section-label .badge { opacity: .25; }
+body.focus-instruments .chord-row, body.focus-instruments .text { opacity: .2; }
+body.focus-chords .tag-row, body.focus-chords .text { opacity: .2; }
+body.focus-techniques .chord-row, body.focus-techniques .text { opacity: .2; }
+.knowledge-panel {
+  width: 350px; min-width: 350px; padding: 16px; overflow-y: auto;
+  background: #1f1814; border-left: 1px solid #3a2a1e;
+  font-size: 13px; line-height: 1.7;
+}
+.knowledge-panel::-webkit-scrollbar { width:5px; }
+.knowledge-panel::-webkit-scrollbar-thumb { background:#3a2a1e; border-radius:3px; }
+.knowledge-panel .kp-title { font-size: 13px; font-weight: 700; color: #d4a574; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #3a2a1e; display: flex; align-items: center; gap: 6px; }
+.knowledge-panel .kp-title .mode-indicator { font-size: 10px; font-weight: 400; color: #666; background: rgba(255,255,255,.03); padding: 1px 8px; border-radius: 10px; }
+.k-card { display: none; padding: 10px 12px; margin-bottom: 8px; border-radius: 6px; border-left: 3px solid #555; background: rgba(255,255,255,.02); }
+.k-card.show { display: block; }
+.k-card .kc-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; margin-bottom: 3px; text-transform: uppercase; opacity: .7; }
+.k-card .kc-body { font-size: 13px; line-height: 1.7; color: #bbb; }
+.k-card.chord-card { border-left-color: #4fc3f7; }
+.k-card.chord-card .kc-label { color: #4fc3f7; }
+.k-card.instr-card { border-left-color: #d4a574; }
+.k-card.instr-card .kc-label { color: #d4a574; }
+.k-card.tech-card { border-left-color: #ab47bc; }
+.k-card.tech-card .kc-label { color: #ab47bc; }
+.k-card.why-card { border-left-color: #f5a623; background: rgba(245,166,35,.06); }
+.k-card.why-card .kc-label { color: #f5a623; }
+.k-card.why-card .kc-body { color: #c4b59a; }
+.k-card.harmony-card { border-left-color: #26c6da; }
+.k-card.harmony-card .kc-label { color: #26c6da; }
+@media (max-width: 820px) { .main { flex-direction: column; } .knowledge-panel { width:100%; min-width:unset; border-left:none; border-top:1px solid #3a2a1e; max-height:300px; } }
+.modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.7); z-index:1000; display:flex; align-items:center; justify-content:center; }
+.modal-box { background:#2a201a; padding:24px; border-radius:12px; max-width:480px; border:1px solid #3a2a1e; margin:20px; color:#ddd; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🔨 米兰的小铁匠 — 交互式歌曲拆解教材</h1>
+    <div class="sub">周杰伦 · 词:方文山 · 编曲:林迈可 · B♭大调 · BPM~100</div>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <a href="index.html" style="font-size:11px;color:rgba(255,255,255,.4);text-decoration:none;">← 爱在西元前</a>
+    <a href="简单爱.html" style="font-size:11px;color:rgba(255,255,255,.4);text-decoration:none;">简单爱 →</a>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="playBtn" onclick="togglePlay()">▶</button>
+  <span class="time" id="timeDisplay">0:00 / 4:39</span>
+  <input type="range" class="seek" id="seekBar" value="0" oninput="seekTo(this.value)">
+  <span class="section-tag" id="sectionTag">前奏</span>
+  <div class="speed-control">
+    <label>速度</label>
+    <select id="speedSelect" onchange="setSpeed(this.value)">
+      <option value="0.5">0.5x</option>
+      <option value="0.75">0.75x</option>
+      <option value="1" selected>1x</option>
+      <option value="1.25">1.25x</option>
+      <option value="1.5">1.5x</option>
+    </select>
+  </div>
+</div>
+
+<div class="controls" style="padding-top:4px;padding-bottom:4px;border-bottom:1px solid #2a1f18;">
+  <span style="font-size:10px;color:#555;min-width:52px;">知识难度</span>
+  <div class="mode-group">
+    <button class="mode-btn level-btn active" data-level="1" onclick="setLevel(1)">L1 入门</button>
+    <button class="mode-btn level-btn" data-level="2" onclick="setLevel(2)">L2 进阶</button>
+    <button class="mode-btn level-btn" data-level="3" onclick="setLevel(3)">L3 高级</button>
+  </div>
+  <span style="font-size:10px;color:#555;margin-left:12px;">学习模式</span>
+  <div class="mode-group">
+    <button class="mode-btn focus-btn active" data-focus="all" onclick="setFocus('all')">全部</button>
+    <button class="mode-btn focus-btn" data-focus="lyrics" onclick="setFocus('lyrics')">歌词</button>
+    <button class="mode-btn focus-btn" data-focus="instruments" onclick="setFocus('instruments')">乐器</button>
+    <button class="mode-btn focus-btn" data-focus="chords" onclick="setFocus('chords')">和弦</button>
+    <button class="mode-btn focus-btn" data-focus="techniques" onclick="setFocus('techniques')">技巧</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="lyrics-panel" id="lyricsPanel"></div>
+  <div class="knowledge-panel" id="knowledgePanel">
+    <div class="kp-title">📖 当前知识 <span class="mode-indicator" id="modeIndicator">L1 · 全部</span></div>
+    <div id="knowledgeContent"><p style="font-size:12px;color:#555;">点击任意歌词行或和弦开始学习</p></div>
+  </div>
+</div>
+
+<script>
+const CHORD_DB = {
+  "B♭": { type:"major", color:"#4fc3f7", notes:"Bb-D-F", roman:"I", desc:"B♭大调的主和弦（I级）。温暖、沉稳，像欧洲古城的石墙。", simple:"B♭ = 温暖的大和弦，这首歌的\"家\"。" },
+  "Gm": { type:"minor", color:"#66bb6a", notes:"G-Bb-D", roman:"VIm", desc:"G小和弦（VI级）。忧郁的小和弦，配合小铁匠的贫穷故事。", simple:"Gm = 忧伤的小和弦。" },
+  "Cm": { type:"minor", color:"#66bb6a", notes:"C-Eb-G", roman:"IIm", desc:"C小和弦（II级）。更暗淡的色彩，增加了欧洲民谣的沧桑感。", simple:"Cm = 黯淡的小和弦。" },
+  "E♭": { type:"major", color:"#4fc3f7", notes:"Eb-G-Bb", roman:"IV", desc:"E♭大和弦（IV级）。明亮、开阔，像米兰的阳光。", simple:"E♭ = 明亮的大和弦。" },
+  "F": { type:"major", color:"#4fc3f7", notes:"F-A-C", roman:"V", desc:"属和弦（V级）。制造紧张感推动回到B♭。", simple:"F = 属和弦，推动感。" },
+  "Dm": { type:"minor", color:"#66bb6a", notes:"D-F-A", roman:"IIIm", desc:"D小和弦（III级）。欧洲民谣中的常见小和弦。", simple:"Dm = 民谣感的小和弦。" },
+  "B♭/D": { type:"major", color:"#4fc3f7", notes:"Bb-D-F（低音D）", roman:"I转位", desc:"B♭和弦的转位，低音是D。低音线条更流畅。", simple:"B♭和弦但低音是D。" },
+  "C7": { type:"dom7", color:"#ffa726", notes:"C-E-G-Bb", roman:"II7", desc:"C属七和弦。爵士味，带一点紧张感。", simple:"C7 = 有点紧张的和弦。" },
+  "F7": { type:"dom7", color:"#ffa726", notes:"F-A-C-Eb", roman:"V7", desc:"F属七和弦。比F和弦更紧张的推动力。", simple:"F7 = 更想\"回家\"的感觉。" },
+  "Gm/F": { type:"minor", color:"#66bb6a", notes:"G-Bb-D（低音F）", roman:"VIm转位", desc:"Gm和弦的转位。", simple:"Gm和弦低音是F。" },
+};
+
+const LYRIC_DATA = [
+  { section: "前奏", time: 0, chords: [{name:"B♭",roman:"I"},{name:"Gm",roman:"VIm"},{name:"E♭",roman:"IV"},{name:"F",roman:"V"}], text: "",
+    tags: ["🎹 手风琴", "🎸 尼龙弦吉他"],
+    l1: { instr: "🎹 手风琴旋律 · 🎸 尼龙弦吉他", why: "前奏的手风琴立刻把你带到欧洲小镇" },
+    l2: { instr: "🎹 手风琴（主旋律）+ 🎸 尼龙弦吉他（分解和弦）", tech: "手风琴音色直接绑定\"欧洲\"意象" },
+    l3: { instr: "🎹 Accordion模拟 + 🎸 尼龙弦吉他Riff", tech: "手风琴旋律用了装饰音（Acciaccatura）模仿民谣风格" },
+    why: ["🎯 为什么前奏一听就是\"欧洲\"？","① 手风琴音色 → 欧洲街头音乐的代表乐器","② 尼龙弦吉他 → 西班牙/意大利民谣的声音","③ 节拍有微妙的\"拖拍\"感 → 模仿民间乐队的随性感","④ 只用B♭-Gm-E♭-F 四个和弦 → 简单却抓住了欧洲民谣的灵魂"]
+  },
+  { section: "前奏", time: 8, chords: [], text: "♪ 手风琴旋律结束 · 主歌进入",
+    tags: [],
+    l1: { instr: "" },
+    l2: { tech: "前奏尾音用F和弦（V级）半终止，悬停在\"未解决\"状态" },
+    l3: { tech: "半终止结束，为主歌的进入做铺垫" },
+    why: []
+  },
+
+  { section: "主歌", time: 16,
+    chords: [{name:"B♭",roman:"I"},{name:"Gm",roman:"VIm"},{name:"E♭",roman:"IV"},{name:"F",roman:"V"}],
+    text: "跑遍了牧场 又绕过了村庄",
+    tags: ["🎤 叙事唱法"],
+    l1: { instr: "🎤 人声 · 🥁 鼓进入", why: "鼓在第5小节才进——和爱在西元前一样的分层进入手法" },
+    l2: { instr: "🎤 主唱 + 🥁 鼓组 + 🎸 吉他持续", tech: "鼓组在第一个\"村庄\"后才进入，保持前奏的流动感" },
+    l3: { instr: "🎤 主唱（叙事语气）+ 🥁 Brush鼓棒（软音色）", tech: "Brush鼓棒带来轻柔的爵士感，不抢叙事" },
+    why: ["🎯 为什么\"跑遍了牧场\"像在讲故事？","① 旋律起伏很小 → 像念白而不是唱歌","② 鼓很轻柔 → 只提供节奏不制造情绪","③ 手风琴在背景持续 → 情绪延续"]
+  },
+  { section: "主歌", time: 24,
+    chords: [{name:"Cm",roman:"IIm"},{name:"F",roman:"V"},{name:"B♭/D",roman:"I转位"},{name:"Gm",roman:"VIm"}],
+    text: "他站在路边 这夏季的炽热",
+    tags: ["🎵 风铃声"],
+    l1: { instr: "🎵 风铃点缀" },
+    l2: { instr: "🎵 高音风铃（Glockenspiel-like）", tech: "风铃高音点缀，听觉上制造\"炎热夏天\"的细微闪烁感" },
+    l3: { instr: "🎵 Glockenspiel高音区", tech: "Cm（IIm）和弦带来微妙的暗淡感，配合歌词\"炽热\"形成反差" },
+    why: ["🎯 最妙的细节","① 歌词说\"炽热\"但和弦是Cm（小和弦）→ 热但不快乐","② 风铃高音像\"阳光在铁匠铺的金属上反射\"","③ 编曲在为歌词\"画画\""]
+  },
+  { section: "主歌", time: 32,
+    chords: [{name:"E♭",roman:"IV"},{name:"F",roman:"V"},{name:"Gm",roman:"VIm"},{name:"F",roman:"V"}],
+    text: "他在他在这季节 若有所失地祷告",
+    tags: [],
+    l1: { instr: "", why: "" },
+    l2: { tech: "E♭→F→Gm的走向像是在祈祷中寻找希望" },
+    l3: { tech: "IV-V-VIm 进行，大和弦到小和弦的转换暗示希望渺茫" },
+    why: []
+  },
+
+  { section: "副歌", time: 40,
+    chords: [{name:"B♭",roman:"I"},{name:"Gm",roman:"VIm"},{name:"E♭",roman:"IV"},{name:"F",roman:"V"}],
+    text: "那幸福 就像挂在铁匠铺的墙上",
+    tags: ["🎻 弦乐进入"],
+    l1: { instr: "🎻 弦乐组 · 🥁 鼓加密", why: "副歌一进弦乐就加入了，情绪立刻饱满起来" },
+    l2: { instr: "🎻 String Ensemble + 🥁 鼓加密", tech: "弦乐和手风琴交织，欧洲民谣感拉满" },
+    l3: { instr: "🎻 弦乐（八度齐奏）+ 🎹 手风琴持续", tech: "副歌和弦与主歌相同但配器更厚，用编曲密度而非和弦变化制造对比" },
+    why: ["🎯 副歌和主歌和弦一样为什么听起来不一样？","① 弦乐进来了 → 厚度翻倍","② 鼓组更密 → 节奏推力更强","③ 人声旋律跨度更大 → 情绪释放","④ 编曲最重要的原则：同样和弦可以用不同配器做出完全不同感觉"]
+  },
+  { section: "副歌", time: 48,
+    chords: [{name:"B♭",roman:"I"},{name:"Gm",roman:"VIm"},{name:"Cm",roman:"IIm"},{name:"F",roman:"V"}],
+    text: "都还在~ 都还在~ 都还在~",
+    tags: ["🎤 三叠重复"],
+    l1: { instr: "", why: "\"都还在\"重复三次，每次情绪递进" },
+    l2: { tech: "B♭→Gm→Cm→F I-VIm-IIm-V 经典小调进行" },
+    l3: { tech: "IIm和弦的加入增加了和声的丰富度" },
+    why: ["🎯 \"都还在\"为什么要唱三遍？","① 重复 = 强调","② 第一遍轻轻 → 第二遍加力 → 第三遍释放","③ 配上IIm和弦的暗淡色彩 → 其实\"幸福并不在\""]
+  },
+
+  { section: "间奏", time: 56,
+    chords: [{name:"B♭",roman:"I"},{name:"Gm",roman:"VIm"},{name:"E♭",roman:"IV"},{name:"F",roman:"V"}],
+    text: "♪ 间奏 · 手风琴Solo",
+    tags: ["🎹 手风琴再起"],
+    l1: { instr: "🎹 手风琴Solo" },
+    l2: { instr: "🎹 Accordion旋律加花", tech: "手风琴即兴式加花，保持欧洲街头氛围" },
+    l3: { tech: "手风琴Solo使用了B♭大调五声音阶" },
+    why: ["🎯 间奏还是手风琴？","① 统一的乐器选择 = 统一的场景感","② 如果换成电吉他Solo → 欧洲小镇的联想立刻破碎","③ 林迈可最厉害的地方：确定一个\"场景音色\"后绝不乱换"]
+  },
+
+  { section: "主歌", time: 64,
+    chords: [{name:"B♭",roman:"I"},{name:"Gm",roman:"VIm"},{name:"E♭",roman:"IV"},{name:"F",roman:"V"}],
+    text: "他偶尔 也会抬头 看一看远方",
+    tags: [],
+    l1: { instr: "", why: "" },
+    l2: { tech: "" },
+    l3: { tech: "" },
+    why: []
+  },
+  { section: "主歌", time: 72,
+    chords: [{name:"Cm",roman:"IIm"},{name:"F",roman:"V"},{name:"B♭/D",roman:"I转位"},{name:"Gm",roman:"VIm"}],
+    text: "来自东欧的旅客 开着车 穿越了夕阳",
+    tags: ["🎸 吉他滑音"],
+    l1: { instr: "🎸 吉他滑音点缀" },
+    l2: { tech: "吉他滑音模仿\"汽车驶过\"的动感" },
+    l3: { tech: "" },
+    why: []
+  },
+  { section: "主歌", time: 80,
+    chords: [{name:"E♭",roman:"IV"},{name:"F",roman:"V"},{name:"Gm",roman:"VIm"},{name:"F",roman:"V"}],
+    text: "唯一带不走的 是那台 老旧钢琴",
+    tags: ["🎹 钢琴加入"],
+    l1: { instr: "🎹 钢琴点缀", why: "\"老旧钢琴\"出现时钢琴正好进来——词曲编一体" },
+    l2: { tech: "歌词唱\"老旧钢琴\"时钢琴音色进入，意象和声音完美同步", tech: "" },
+    l3: { tech: "歌词-配器同步：最细腻的编曲手法" },
+    why: ["🎯 最精巧的设计","① 歌词唱\"老旧钢琴\" → 钢琴音色恰好在这句出现","② 你\"听到\"歌词的同时\"听到\"了对应的乐器","③ 这叫\"歌词-配器同步\"——林迈可的拿手好戏"]
+  },
+
+  { section: "副歌", time: 88,
+    chords: [{name:"B♭",roman:"I"},{name:"Gm",roman:"VIm"},{name:"E♭",roman:"IV"},{name:"F",roman:"V"}],
+    text: "那幸福 就像挂在铁匠铺的墙上",
+    tags: ["🎻 弦乐再加厚"],
+    l1: { instr: "🎻 全弦乐组 + 🎹 手风琴" },
+    l2: { tech: "第二遍副歌弦乐比第一遍更厚" },
+    l3: { tech: "渐进式编曲：第二次副歌 = 第一次的增强版" },
+    why: []
+  },
+  { section: "副歌", time: 96,
+    chords: [{name:"B♭",roman:"I"},{name:"Gm",roman:"VIm"},{name:"Cm",roman:"IIm"},{name:"F7",roman:"V7"}],
+    text: "都还在~ 都还在~ 都还在~",
+    tags: ["⬆️ 属七和弦"],
+    l1: { instr: "", why: "F7（属七和弦）加入了——比F更紧张的推进力" },
+    l2: { tech: "F→F7 的变化，七度音让和弦更不稳定" },
+    l3: { tech: "F7 = F-A-C-Eb，属七和弦制造更强烈的\"回家\"渴望" },
+    why: ["🎯 F7和F的区别","① F7比F多了一个Eb音","② 这个音让和弦\"拧着\" → 更想回到B♭","③ 编曲手法：第二次副歌增加一点点紧张感"]
+  },
+
+  { section: "★ 桥段", time: 104,
+    chords: [{name:"Gm",roman:"VIm"},{name:"F",roman:"V"},{name:"E♭",roman:"IV"},{name:"B♭/D",roman:"I转位"}],
+    text: "我多想 再见到你 那首老歌 还在唱",
+    tags: ["🎹 钢琴独奏"],
+    l1: { instr: "🎹 钢琴 · 🎤 人声", why: "手风琴和吉他都停了，只剩钢琴" },
+    l2: { tech: "减法编曲：配器减少，注意力集中到歌词\"再见到你\"" },
+    l3: { tech: "Gm→F→E♭→B♭/D 低音下行：G→F→E♭→D，半音下行线条" },
+    why: ["🎯 桥段为什么最打动人心？","① 全部乐器退出 → 只剩钢琴+人声","② 低音半音下行（G→F→E♭→D）→ 像慢慢坐下","③ 桥段最后一拍 → 手风琴突然回来 → 完美衔接副歌"]
+  },
+  { section: "★ 桥段", time: 112,
+    chords: [{name:"Cm",roman:"IIm"},{name:"F",roman:"V"},{name:"B♭",roman:"I"}],
+    text: "歌声多悠扬 现实却多惆怅",
+    tags: [],
+    l1: { instr: "" },
+    l2: { tech: "Cm→F→B♭ II-V-I 解决，但情绪没有\"解决\"" },
+    l3: { tech: "II-V-I最标准的解决，但旋律是下行 → 解决但不快乐" },
+    why: ["🎯 和弦\"解决了\"为什么不开心？","① Cm→F→B♭ 是最标准的和声解决","② 但旋律是往下的 → 和声在说\"好了\"，旋律在说\"唉\"","③ 这就是音乐能表达\"矛盾情感\"的方式"]
+  },
+
+  { section: "尾奏", time: 120,
+    chords: [{name:"B♭",roman:"I"},{name:"Gm",roman:"VIm"},{name:"E♭",roman:"IV"},{name:"F",roman:"V"}],
+    text: "♪ 手风琴再次响起 · 渐弱结束",
+    tags: ["🌅 淡出"],
+    l1: { instr: "🎹 手风琴回到前奏旋律" },
+    l2: { tech: "回到前奏的编配，首尾呼应" },
+    l3: { tech: "Fade Out淡出，故事还在继续" },
+    why: ["🎯 为什么用淡出？","① 回到前奏手风琴 → 结构闭环","② 淡出 → 小铁匠的故事还在继续，只是你听不到了","③ 全曲结构：前奏→主歌→副歌→间奏→主歌→副歌→桥段→尾奏"]
+  },
+];
+
+let currentLevel = 1, currentFocus = "all", activeIdx = -1, isPlaying = false;
+const audio = new Audio();
+audio.src = "米兰的小铁匠-周杰伦.mp3";
+audio.volume = 0.8;
+
+function getChord(name) { return CHORD_DB[name] || { type:"major", color:"#4fc3f7", notes:"", roman:"", desc:"", simple:"" }; }
+function getChordColor(name) { return getChord(name).color || "#4fc3f7"; }
+function formatTime(s) { if(isNaN(s)) return "0:00"; const m=Math.floor(s/60); return `${m}:${Math.floor(s%60).toString().padStart(2,'0')}`; }
+
+function renderLyrics() {
+  let html = "", lastSection = "";
+  LYRIC_DATA.forEach((line, idx) => {
+    if(line.section !== lastSection) { lastSection = line.section; html += `<div class="section-label">${line.section}<span class="badge">${formatTime(line.time)}</span></div>`; }
+    let chordRow = "";
+    if(line.chords.length > 0) {
+      chordRow = `<div class="chord-row">`;
+      line.chords.forEach(c => { const cc=getChordColor(c.name); let rd=currentLevel>=2?`<span class="roman">${c.roman}</span>`:""; chordRow += `<span class="chord-tag" style="color:${cc};border:1px solid ${cc}33;" onclick="showChordDetail('${c.name}',event)">${c.name}${rd}</span>`; });
+      chordRow += `</div>`;
+    }
+    let tagRow = "";
+    if(line.tags.length > 0 && currentLevel <= 2) {
+      tagRow = `<div class="tag-row">`;
+      line.tags.forEach(t => { const cls=t.includes("🎸")||t.includes("🎻")||t.includes("🎹")||t.includes("🎤")||t.includes("🎵")||t.includes("🥁")?"instrument":"technique"; tagRow += `<span class="tag ${cls}">${t}</span>`; });
+      tagRow += `</div>`;
+    }
+    html += `<div class="lyric-line" data-idx="${idx}" onclick="clickLine(${idx})"><span class="ts">${formatTime(line.time)}</span><div style="flex:1;">${chordRow}<div class="text">${line.text}</div>${tagRow}</div></div>`;
+  });
+  document.getElementById('lyricsPanel').innerHTML = html;
+}
+
+function updateKnowledge(idx) {
+  const line = LYRIC_DATA[idx]; if(!line) return;
+  const panel = document.getElementById('knowledgeContent'); let html = "";
+  if(currentLevel === 1) {
+    if(line.l1?.instr) html += `<div class="k-card show instr-card"><div class="kc-label">🎸 当前乐器</div><div class="kc-body">${line.l1.instr}</div></div>`;
+    if(line.l1?.why) html += `<div class="k-card show why-card"><div class="kc-label">💡 注意听</div><div class="kc-body">${line.l1.why}</div></div>`;
+  }
+  if(currentLevel === 2) {
+    if(line.l2?.instr) html += `<div class="k-card show instr-card"><div class="kc-label">🎸 乐器</div><div class="kc-body">${line.l2.instr}</div></div>`;
+    if(line.l2?.tech) html += `<div class="k-card show tech-card"><div class="kc-label">💡 编曲手法</div><div class="kc-body">${line.l2.tech}</div></div>`;
+    if(line.chords.length > 0) { const cl=line.chords.map(c=>`<span style="color:${getChordColor(c.name)};font-weight:700;font-family:Consolas;">${c.name}</span> (<span style="color:#666;">${c.roman}</span>)`).join(' → '); html += `<div class="k-card show harmony-card"><div class="kc-label">🎹 和弦进行</div><div class="kc-body">${cl}</div></div>`; }
+  }
+  if(currentLevel === 3) {
+    if(line.l3?.instr) html += `<div class="k-card show instr-card"><div class="kc-label">🎸 乐器细节</div><div class="kc-body">${line.l3.instr}</div></div>`;
+    if(line.l3?.tech) html += `<div class="k-card show tech-card"><div class="kc-label">💡 高级编曲技术</div><div class="kc-body">${line.l3.tech}</div></div>`;
+    if(line.chords.length > 0) { const cl=line.chords.map(c=>`<span style="color:${getChordColor(c.name)};font-weight:700;font-family:Consolas;">${c.name}</span>`).join(' → '); html += `<div class="k-card show harmony-card"><div class="kc-label">🎹 和弦进行</div><div class="kc-body">${cl}</div></div>`; html += `<div class="k-card show chord-card"><div class="kc-label">🎼 和弦构成</div><div class="kc-body">`; line.chords.forEach(c=>{const info=getChord(c.name); html+=`<div style="margin:2px 0;"><span style="color:${info.color};font-weight:700;font-family:Consolas;">${c.name}</span><span style="color:#666;"> = ${info.notes}</span></div>`;}); html+=`</div></div>`; }
+  }
+  if(line.why && line.why.length > 0) { html += `<div class="k-card show why-card"><div class="kc-label">🎯 为什么这里好听？</div><div class="kc-body" style="font-size:13px;">`; line.why.forEach(w=>{const isH=w.startsWith("🎯"); html+=`<div style="margin:2px 0;${isH?'font-weight:700;color:#c4b59a;margin-bottom:4px;':''}">${w}</div>`;}); html+=`</div></div>`; }
+  if(!html) html = '<p style="font-size:12px;color:#555;">暂无注释 · 切换知识难度了解更多</p>';
+  panel.innerHTML = html;
+}
+
+function showChordDetail(name, evt) {
+  const info = getChord(name); if(!info) return;
+  const modal = document.createElement('div'); modal.className = 'modal-overlay';
+  modal.onclick = function(e) { if(e.target===this) document.body.removeChild(this); };
+  const typeLabels = { major:"大三和弦（明亮）", minor:"小三和弦（忧伤）", minor7:"小七和弦（温柔忧伤）", maj7:"大七和弦（梦幻）", dom7:"属七和弦（紧张）" };
+  modal.innerHTML = `<div class="modal-box" style="max-width:500px;"><h2 style="color:${info.color};font-family:Consolas;margin-bottom:8px;">${name} <span style="font-size:14px;color:#666;">— ${typeLabels[info.type]||info.type}</span></h2><div style="display:flex;gap:16px;flex-wrap:wrap;"><div style="flex:1;"><div style="font-size:12px;color:#666;margin-bottom:4px;">🎼 构成音</div><div style="font-size:16px;color:${info.color};font-weight:700;font-family:Consolas;">${info.notes}</div><div style="font-size:12px;color:#666;margin:8px 0 4px;">🎸 级数</div><div style="font-size:14px;color:#aaa;font-family:Consolas;">${info.roman}</div></div></div><div style="margin-top:8px;font-size:13px;color:#bbb;line-height:1.6;">${currentLevel >= 2 ? info.desc : info.simple}</div><button onclick="this.closest('.modal-overlay').remove()" style="margin-top:12px;background:#3a2a1e;color:#ddd;border:none;padding:6px 20px;border-radius:4px;cursor:pointer;font-family:inherit;">关闭</button></div>`;
+  document.body.appendChild(modal);
+}
+
+function togglePlay() { if(isPlaying) audio.pause(); else audio.play().catch(e=>{ if(e.name==='NotAllowedError') alert('请先在页面上点击激活音频'); else alert('⚠️ 找不到音频文件'); }); }
+function seekTo(val) { audio.currentTime = parseFloat(val); }
+function setSpeed(val) { audio.playbackRate = parseFloat(val); }
+
+function clickLine(idx) {
+  const item = LYRIC_DATA[idx];
+  audio.currentTime = item.time;
+  if(!isPlaying) audio.play().catch(()=>{});
+  updateActiveLine(idx); updateKnowledge(idx);
+  document.getElementById('sectionTag').textContent = item.section.replace(/[0-9:★]/g,'').trim();
+}
+
+function updateActiveLine(idx) {
+  document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
+  const el = document.querySelector(`.lyric-line[data-idx="${idx}"]`);
+  if(el) { el.classList.add('active'); el.scrollIntoView({block:'center',behavior:'smooth'}); }
+  activeIdx = idx;
+}
+
+function setLevel(lv) {
+  currentLevel = lv;
+  document.body.className = document.body.className.replace(/level-\d/g,'') + ` level-${lv}`;
+  document.querySelectorAll('.level-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.level)===lv));
+  document.getElementById('modeIndicator').textContent = `L${lv} · ${getFocusLabel()}`;
+  renderLyrics(); if(activeIdx>=0) { updateKnowledge(activeIdx); updateActiveLine(activeIdx); }
+}
+function getFocusLabel() { const lb={all:'全部',lyrics:'歌词',instruments:'乐器',chords:'和弦',techniques:'技巧'}; return lb[currentFocus]||'全部'; }
+function setFocus(mode) { currentFocus=mode; document.body.className = document.body.className.replace(/focus-\w+/g,'') + ` level-${currentLevel} focus-${mode}`; document.querySelectorAll('.focus-btn').forEach(b=>b.classList.toggle('active',b.dataset.focus===mode)); document.getElementById('modeIndicator').textContent = `L${currentLevel} · ${getFocusLabel()}`; }
+
+audio.addEventListener('play', () => { isPlaying=true; document.getElementById('playBtn').textContent='⏸'; });
+audio.addEventListener('pause', () => { isPlaying=false; document.getElementById('playBtn').textContent='▶'; });
+audio.addEventListener('ended', () => { isPlaying=false; document.getElementById('playBtn').textContent='▶'; });
+audio.addEventListener('timeupdate', () => {
+  const t = audio.currentTime, dur = audio.duration || 279;
+  document.getElementById('seekBar').max = dur;
+  document.getElementById('seekBar').value = t;
+  document.getElementById('timeDisplay').textContent = `${formatTime(t)} / ${formatTime(dur)}`;
+  let best = -1;
+  for(let i=LYRIC_DATA.length-1; i>=0; i--) { if(t >= LYRIC_DATA[i].time - 0.3) { best=i; break; } }
+  if(best>=0 && best!==activeIdx) { updateActiveLine(best); updateKnowledge(best); const sec=LYRIC_DATA[best].section; document.getElementById('sectionTag').textContent=sec.replace(/[0-9:★]/g,'').trim(); }
+});
+
+document.addEventListener('keydown', e => { if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT') return; if(e.code==='Space'){ e.preventDefault(); togglePlay(); } if(e.code==='ArrowLeft'){ audio.currentTime=Math.max(0,audio.currentTime-5); } if(e.code==='ArrowRight'){ audio.currentTime=Math.min(audio.duration||279,audio.currentTime+5); } if(e.code==='ArrowUp'){ audio.volume=Math.min(1,audio.volume+0.1); } if(e.code==='ArrowDown'){ audio.volume=Math.max(0,audio.volume-0.1); } });
+
+document.addEventListener('DOMContentLoaded', () => { renderLyrics(); setLevel(1); setFocus('all'); if(LYRIC_DATA.length>0) updateKnowledge(0); });
+</script>
+</body>
+</html>
